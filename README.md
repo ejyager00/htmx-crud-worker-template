@@ -4,7 +4,7 @@
 
 ```bash
 # Initialize a new project using this template
-npm create cloudflare@latest -- --template=ejyager00/htmx-crud-worker-template
+npm create cloudflare@latest -- --template=ejyager00/htmx-crud-worker-template --agents=false 
 ```
 
 A production-ready Cloudflare Worker template for building full-stack CRUD applications. Includes authentication, server-side rendering, and a clean architecture you can extend immediately.
