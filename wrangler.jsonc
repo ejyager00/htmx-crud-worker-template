@@ -1,0 +1,112 @@
+/**
+ * Cloudflare Worker CRUD Template
+ * https://developers.cloudflare.com/workers/wrangler/configuration/
+ *
+ * After cloning this template:
+ * 1. Create D1:  wrangler d1 create my-app-db
+ * 2. Create KV:  wrangler kv namespace create SESSIONS
+ * 3. Fill in the database_id and KV id fields below (marked TODO)
+ * 4. Run:        wrangler types   (regenerates worker-configuration.d.ts)
+ * 5. Run:        npm run db:migrate:dev
+ */
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "my-app",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-03-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "upload_source_maps": true,
+
+  /**
+   * Static Assets — served directly from /public
+   * https://developers.cloudflare.com/workers/static-assets/binding/
+   */
+  "assets": {
+    "directory": "./public/",
+    "binding": "ASSETS"
+  },
+
+  /**
+   * Wrangler Rules — import .njk files as raw text strings so Nunjucks
+   * can use renderString() in the Workers runtime (no filesystem loader)
+   */
+  "rules": [
+    { "type": "Text", "globs": ["**/*.njk"], "fallthrough": true }
+  ],
+
+  /**
+   * D1 Database binding
+   * TODO: replace database_id after `wrangler d1 create my-app-db`
+   */
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "my-app-db",
+      "database_id": "00000000-0000-0000-0000-000000000000" // TODO: replace with real ID
+    }
+  ],
+
+  /**
+   * KV Namespace binding — used for refresh tokens and JWT denylist
+   * TODO: replace id after `wrangler kv namespace create SESSIONS`
+   */
+  "kv_namespaces": [
+    {
+      "binding": "SESSIONS",
+      "id": "00000000000000000000000000000000" // TODO: replace with real ID
+    }
+  ],
+
+  "observability": {
+    "enabled": true
+  },
+
+  /**
+   * Environment-specific overrides.
+   * Secrets (JWT_SECRET, TURNSTILE_SECRET_KEY) are NOT set here — use:
+   *   wrangler secret put JWT_SECRET --env dev
+   *   wrangler secret put JWT_SECRET --env production
+   */
+  "env": {
+    "dev": {
+      "name": "my-app-dev",
+      "vars": {
+        "ENVIRONMENT": "dev",
+        "TURNSTILE_SITE_KEY": "1x00000000000000000000AA" // Turnstile always-pass test site key
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "my-app-db-dev",
+          "database_id": "00000000-0000-0000-0000-000000000001" // TODO: replace with real ID
+        }
+      ],
+      "kv_namespaces": [
+        {
+          "binding": "SESSIONS",
+          "id": "00000000000000000000000000000001" // TODO: replace with real ID
+        }
+      ]
+    },
+    "production": {
+      "name": "my-app",
+      "vars": {
+        "ENVIRONMENT": "production",
+        "TURNSTILE_SITE_KEY": "" // TODO: set your Turnstile site key
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "my-app-db",
+          "database_id": "00000000-0000-0000-0000-000000000002" // TODO: replace with real ID
+        }
+      ],
+      "kv_namespaces": [
+        {
+          "binding": "SESSIONS",
+          "id": "00000000000000000000000000000002" // TODO: replace with real ID
+        }
+      ]
+    }
+  }
+}

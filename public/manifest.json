@@ -1,0 +1,14 @@
+{
+  "name": "My App",
+  "short_name": "My App",
+  "description": "A Cloudflare Worker CRUD application.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#4f46e5",
+  "icons": [
+    { "src": "/icons/icon.svg", "type": "image/svg+xml", "sizes": "any" },
+    { "src": "/icons/icon-192.png", "type": "image/png", "sizes": "192x192" },
+    { "src": "/icons/icon-512.png", "type": "image/png", "sizes": "512x512", "purpose": "any maskable" }
+  ]
+}

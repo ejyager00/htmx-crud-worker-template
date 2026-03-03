@@ -1,0 +1,10 @@
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>{{ title | default('App') }}</title>
+<meta name="application-name" content="{{ title | default('App') }}" />
+<meta name="theme-color" content="#4f46e5" />
+<link rel="manifest" href="/manifest.json" />
+<link rel="apple-touch-icon" href="/icons/icon-192.png" />
+<!-- TODO: Replace Tailwind Play CDN with a PostCSS/CLI build step for production -->
+<script src="https://cdn.tailwindcss.com"></script>
+{% block head %}{% endblock %}
