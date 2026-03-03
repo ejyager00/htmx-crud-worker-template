@@ -39,7 +39,7 @@ Retrieve API references and limits from:
 
 ## What This Repo Is
 
-A reusable CRUD starter template: **Hono + HTMX + Nunjucks SSR + D1 + KV + auth**. The goal is a clean, immediately usable scaffold — not a demo. Keep it minimal and avoid adding features that aren't part of the auth/CRUD foundation.
+A reusable CRUD starter template: **Hono + HTMX + Nunjucks SSR + D1 + KV + auth**.
 
 ## Key Constraints
 
