@@ -44,7 +44,7 @@ A reusable CRUD starter template: **Hono + HTMX + Nunjucks SSR + D1 + KV + auth*
 ## Key Constraints
 
 - **No Node.js crypto** — all crypto via `SubtleCrypto` (`crypto.subtle`). See `src/lib/crypto.ts` and `src/lib/jwt.ts`.
-- **No Nunjucks filesystem loader** — the Workers runtime has no filesystem. Templates are bundled as raw strings via Wrangler `rules` and loaded through a custom `StaticLoader` in `src/lib/render.ts`.
+- **No Nunjucks runtime compilation** — the Workers V8 isolate blocks `new Function()` / eval (`EvalError: Code generation from strings disallowed`), which Nunjucks uses internally. Templates are precompiled to plain JS functions at build time via `npm run build` (`scripts/precompile-templates.js`). The output is `src/lib/templates-precompiled.ts` — do not edit it manually.
 - **No `localStorage`/`sessionStorage`** — session state is server-side only (KV + `httpOnly` cookies).
 - **Forms must work without JS** — all POST routes must accept standard `application/x-www-form-urlencoded` form submissions. HTMX is progressive enhancement only.
 
@@ -70,10 +70,12 @@ refresh:<refresh_token>   → "<userId>"   (TTL = 7 days)
 ```
 
 ### Template System
-- All `.njk` files in `src/templates/` are imported as raw strings via Wrangler `rules`
-- **Adding a new template**: create the file, then register it in `TEMPLATE_MAP` in `src/lib/render.ts`
-- Call `render("pages/my-page.njk", context)` — the name must match a key in `TEMPLATE_MAP`
-- `{% extends %}` and `{% include %}` are resolved through the `StaticLoader`, not the filesystem
+- Templates in `src/templates/` are precompiled at build time by `scripts/precompile-templates.js`
+- The output is `src/lib/templates-precompiled.ts` (auto-generated, committed to repo)
+- **Adding a new template**: create the `.njk` file, then run `npm run build` to regenerate the precompiled output
+- Call `render("pages/my-page.njk", context)` — the name must match a path under `src/templates/`
+- `{% extends %}` and `{% include %}` are resolved through the `PrecompiledStaticLoader` in `render.ts`
+- `dev` and `deploy` scripts run `npm run build` automatically
 
 ### Auth Middleware Usage
 ```typescript
@@ -91,7 +93,7 @@ Unauthenticated requests: redirect to `/auth/login` if `Accept: text/html`, else
 
 ### New page (SSR)
 1. `src/templates/pages/my-page.njk` — extend `base.njk`
-2. Add to `TEMPLATE_MAP` in `src/lib/render.ts`
+2. Run `npm run build` to precompile
 3. Add route in `src/routes/`
 
 ### New D1 table

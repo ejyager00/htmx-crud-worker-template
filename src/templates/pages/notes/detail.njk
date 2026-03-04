@@ -1,0 +1,38 @@
+{% extends "base.njk" %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+  <div class="flex items-center justify-between mb-4">
+    <h2 class="text-xl font-semibold truncate">{{ note.title }}</h2>
+    <div class="flex items-center gap-3 flex-shrink-0 ml-4">
+      <a
+        href="/notes/{{ note.id }}/edit"
+        class="text-sm text-indigo-600 hover:underline"
+      >Edit</a>
+      <form
+        method="POST"
+        action="/notes/{{ note.id }}/delete"
+        hx-post="/notes/{{ note.id }}/delete"
+        hx-push-url="/notes"
+        hx-confirm="Delete this note?"
+      >
+        <input type="hidden" name="_csrf" value="{{ csrfToken }}" />
+        <button type="submit" class="text-sm text-red-500 hover:text-red-700 transition-colors">
+          Delete
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <div class="text-xs text-gray-400 mb-6">
+    Created {{ note.created_at }}
+    {% if note.updated_at !== note.created_at %} · Updated {{ note.updated_at }}{% endif %}
+  </div>
+
+  <div class="prose prose-sm max-w-none text-gray-800 whitespace-pre-wrap">{{ note.body }}</div>
+
+  <div class="mt-8">
+    <a href="/notes" class="text-sm text-gray-500 hover:text-gray-700">&larr; All notes</a>
+  </div>
+</div>
+{% endblock %}

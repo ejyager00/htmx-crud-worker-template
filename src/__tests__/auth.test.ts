@@ -7,35 +7,23 @@
 
 import { SELF, env } from "cloudflare:test";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import {
+  createTestUser,
+  loginAs,
+  getAuthCookies,
+  formBody,
+  formBodyWithCsrf,
+  type TestUser,
+} from "./helpers";
 
 // ---------------------------------------------------------------------------
-// Test helpers
+// Local helpers
 // ---------------------------------------------------------------------------
 
-/** Insert a test user directly into D1. */
-async function createTestUser(
-  username: string,
-  passwordHash: string = "pbkdf2:sha256:300000:dGVzdA==:dGVzdA=="
-) {
-  const id = crypto.randomUUID();
-  await env.DB.prepare(
-    "INSERT INTO users (id, username, password_hash, created_at) VALUES (?, ?, ?, ?)"
-  )
-    .bind(id, username, passwordHash, Math.floor(Date.now() / 1000))
-    .run();
-  return id;
-}
-
-/** Delete test user by username. */
 async function deleteTestUser(username: string) {
   await env.DB.prepare("DELETE FROM users WHERE username = ?")
     .bind(username)
     .run();
-}
-
-/** Build a form-encoded body. */
-function formBody(data: Record<string, string>): string {
-  return new URLSearchParams(data).toString();
 }
 
 // ---------------------------------------------------------------------------
@@ -46,9 +34,13 @@ describe("GET /auth/signup", () => {
   it("renders the signup page", async () => {
     const res = await SELF.fetch("http://localhost/auth/signup");
     expect(res.status).toBe(200);
-    const body = await res.text();
-    expect(body).toContain("Sign up");
-    expect(body).toContain("cf-turnstile");
+    const text = await res.text();
+    expect(text).toContain("Sign up");
+    expect(text).toContain("cf-turnstile");
+    expect(text).toContain('name="_csrf"');
+    // Response should set the csrf_token cookie
+    const setCookie = res.headers.get("Set-Cookie") ?? "";
+    expect(setCookie).toContain("csrf_token");
   });
 });
 
@@ -56,9 +48,10 @@ describe("GET /auth/login", () => {
   it("renders the login page", async () => {
     const res = await SELF.fetch("http://localhost/auth/login");
     expect(res.status).toBe(200);
-    const body = await res.text();
-    expect(body).toContain("Log in");
-    expect(body).toContain("cf-turnstile");
+    const text = await res.text();
+    expect(text).toContain("Log in");
+    expect(text).toContain("cf-turnstile");
+    expect(text).toContain('name="_csrf"');
   });
 });
 
@@ -69,87 +62,104 @@ describe("POST /auth/signup", () => {
     await deleteTestUser(username);
   });
 
-  it("rejects invalid form data", async () => {
+  it("rejects invalid form data with 400", async () => {
+    const { body, csrfCookie } = formBodyWithCsrf({
+      username: "ab",
+      password: "short",
+      turnstileToken: "x",
+    });
     const res = await SELF.fetch("http://localhost/auth/signup", {
       method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: formBody({ username: "ab", password: "short", turnstileToken: "x" }),
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Cookie: csrfCookie,
+      },
+      body,
     });
-    // Validation failure → 400
     expect(res.status).toBe(400);
   });
 
-  it("signs up a new user and redirects to /", async () => {
+  it("returns 403 when CSRF token is missing", async () => {
     const res = await SELF.fetch("http://localhost/auth/signup", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      // Turnstile always-pass test secret: 1x0000000000000000000000000000000AA
-      // With the test secret, any token passes.
       body: formBody({
         username,
         password: "password123",
         turnstileToken: "test-token",
       }),
+    });
+    expect(res.status).toBe(403);
+  });
+
+  it("signs up a new user and redirects to /", async () => {
+    const { body, csrfCookie } = formBodyWithCsrf({
+      username,
+      password: "password123",
+      turnstileToken: "test-token",
+    });
+    const res = await SELF.fetch("http://localhost/auth/signup", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Cookie: csrfCookie,
+      },
+      body,
       redirect: "manual",
     });
     expect(res.status).toBe(302);
     expect(res.headers.get("Location")).toBe("/");
 
-    // Access and refresh tokens should be set
-    const setCookie = res.headers.get("Set-Cookie") ?? "";
-    expect(setCookie).toContain("access_token");
-    expect(setCookie).toContain("refresh_token");
+    const cookies = getAuthCookies(res);
+    expect(cookies).toContain("access_token");
+    expect(cookies).toContain("refresh_token");
   });
 
-  it("rejects duplicate username", async () => {
-    // Pre-create user
-    await createTestUser(username);
+  it("rejects duplicate username with 409", async () => {
+    await createTestUser({ username });
 
+    const { body, csrfCookie } = formBodyWithCsrf({
+      username,
+      password: "password123",
+      turnstileToken: "test-token",
+    });
     const res = await SELF.fetch("http://localhost/auth/signup", {
       method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: formBody({
-        username,
-        password: "password123",
-        turnstileToken: "test-token",
-      }),
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Cookie: csrfCookie,
+      },
+      body,
     });
     expect(res.status).toBe(409);
-    const body = await res.text();
-    expect(body).toContain("already taken");
+    expect(await res.text()).toContain("already taken");
   });
 });
 
 describe("POST /auth/login", () => {
-  const username = `logintest_${Date.now()}`;
+  let user: TestUser;
 
   beforeEach(async () => {
-    // Sign up the user so we have a real password hash
-    await SELF.fetch("http://localhost/auth/signup", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: formBody({
-        username,
-        password: "password123",
-        turnstileToken: "test-token",
-      }),
-      redirect: "manual",
-    });
+    user = await createTestUser();
   });
 
   afterEach(async () => {
-    await deleteTestUser(username);
+    await deleteTestUser(user.username);
   });
 
   it("logs in with correct credentials and redirects to /", async () => {
+    const { body, csrfCookie } = formBodyWithCsrf({
+      username: user.username,
+      password: user.password,
+      turnstileToken: "test-token",
+    });
     const res = await SELF.fetch("http://localhost/auth/login", {
       method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: formBody({
-        username,
-        password: "password123",
-        turnstileToken: "test-token",
-      }),
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Cookie: csrfCookie,
+      },
+      body,
       redirect: "manual",
     });
     expect(res.status).toBe(302);
@@ -157,29 +167,57 @@ describe("POST /auth/login", () => {
   });
 
   it("rejects wrong password with 401", async () => {
+    const { body, csrfCookie } = formBodyWithCsrf({
+      username: user.username,
+      password: "wrongpassword",
+      turnstileToken: "test-token",
+    });
     const res = await SELF.fetch("http://localhost/auth/login", {
       method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: formBody({
-        username,
-        password: "wrongpassword",
-        turnstileToken: "test-token",
-      }),
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Cookie: csrfCookie,
+      },
+      body,
     });
     expect(res.status).toBe(401);
-    const body = await res.text();
-    expect(body).toContain("Invalid username or password");
+    expect(await res.text()).toContain("Invalid username or password");
   });
 });
 
 describe("POST /auth/logout", () => {
   it("clears cookies and redirects to /auth/login", async () => {
+    // Logout requires a valid CSRF token
+    const { body, csrfCookie } = formBodyWithCsrf({});
     const res = await SELF.fetch("http://localhost/auth/logout", {
       method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Cookie: csrfCookie,
+      },
+      body,
       redirect: "manual",
     });
     expect(res.status).toBe(302);
     expect(res.headers.get("Location")).toBe("/auth/login");
+  });
+});
+
+describe("loginAs helper", () => {
+  let user: TestUser;
+
+  beforeEach(async () => {
+    user = await createTestUser();
+  });
+
+  afterEach(async () => {
+    await deleteTestUser(user.username);
+  });
+
+  it("returns auth cookies for a valid user", async () => {
+    const cookies = await loginAs(user.username, user.password);
+    expect(cookies).toContain("access_token");
+    expect(cookies).toContain("refresh_token");
   });
 });
 

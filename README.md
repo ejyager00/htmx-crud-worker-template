@@ -18,7 +18,7 @@ A production-ready Cloudflare Worker template for building full-stack CRUD appli
 | Database | Cloudflare D1 (SQLite) |
 | Sessions / Token storage | Cloudflare KV |
 | Frontend | [HTMX](https://htmx.org) + [Tailwind CSS](https://tailwindcss.com) |
-| Templating | [Nunjucks](https://mozilla.github.io/nunjucks/) (SSR, bundled as text) |
+| Templating | [Nunjucks](https://mozilla.github.io/nunjucks/) (SSR, precompiled at build time) |
 | Validation | [Zod](https://zod.dev) + [@hono/zod-validator](https://github.com/honojs/middleware/tree/main/packages/zod-validator) |
 | Auth | Username/password (PBKDF2 via SubtleCrypto) + JWT in `httpOnly` cookie |
 | Bot protection | [Cloudflare Turnstile](https://www.cloudflare.com/products/turnstile/) |
@@ -42,7 +42,7 @@ All forms work as standard HTML POST submissions (no JavaScript required) and al
 - KV-backed JWT denylist for immediate logout invalidation
 
 ### Templates
-Server-rendered Nunjucks templates with a base layout, nav, header, and footer. Templates are bundled as raw strings via Wrangler rules — no filesystem access required in the Workers runtime.
+Server-rendered Nunjucks templates with a base layout, nav, header, and footer. Templates are precompiled to plain JavaScript functions at build time (`npm run build`) — no runtime code generation, no filesystem access, and no Wrangler text rules required.
 
 ### Progressive Web App
 - **Web App Manifest** (`/public/manifest.json`) — enables browser install prompts and standalone display mode
@@ -168,8 +168,9 @@ Visit `http://localhost:8787`. You'll be redirected to `/auth/login`.
 
 | Script | Command |
 |---|---|
-| `npm run dev` | Start local dev server |
-| `npm run deploy` | Deploy to Cloudflare |
+| `npm run dev` | Precompile templates, then start local dev server |
+| `npm run deploy` | Precompile templates, then deploy to Cloudflare |
+| `npm run build` | Precompile Nunjucks templates to JS (run after editing `.njk` files) |
 | `npm run types` | Regenerate TypeScript types from `wrangler.jsonc` |
 | `npm test` | Run integration tests |
 | `npm run test:watch` | Run tests in watch mode |
@@ -202,7 +203,7 @@ npm run deploy
 ### Adding a new page
 
 1. Create a template in `src/templates/pages/my-page.njk` (extend `base.njk`)
-2. Register it in `TEMPLATE_MAP` in `src/lib/render.ts`
+2. Run `npm run build` to precompile the new template
 3. Add a route in `src/routes/` using `render("pages/my-page.njk", context)`
 
 ### Adding a protected route
@@ -241,7 +242,7 @@ npm run db:migrate:dev
 ## Notes
 
 - **Tailwind CDN**: The template uses Tailwind's Play CDN for simplicity. For production, replace it with a PostCSS or Tailwind CLI build step.
-- **Nunjucks**: Templates are bundled as raw strings via Wrangler rules. `configure()` with a filesystem loader does not work in the Workers runtime — use `render()` from `src/lib/render.ts` exclusively, and register any new `.njk` files in `TEMPLATE_MAP`.
+- **Nunjucks**: Templates are precompiled to plain JS functions by `scripts/precompile-templates.js`. Nunjucks' `new Function()` code generation is blocked in the Workers runtime — precompiling at build time avoids this entirely. Always use `render()` from `src/lib/render.ts`, and run `npm run build` after adding or editing any `.njk` file.
 - **Turnstile**: The `.dev.vars.example` file includes Cloudflare's always-pass test keys. Create a real site/secret key pair at [dash.cloudflare.com](https://dash.cloudflare.com) for production.
 - **PWA icons**: The template ships a placeholder SVG icon. For browser install prompts, generate real PNG icons at 192×192 and 512×512 pixels and place them at `public/icons/icon-192.png` and `public/icons/icon-512.png`. Update `name` and `short_name` in `public/manifest.json` when you clone the template.
 - **PWA cache version**: When deploying breaking changes to static assets, increment `CACHE_VERSION` in `public/sw.js` (e.g. `'v1'` → `'v2'`). The activate event will automatically purge the old cache.

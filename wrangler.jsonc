@@ -14,9 +14,10 @@
   "name": "my-app",
   "main": "src/index.ts",
   "compatibility_date": "2026-03-01",
-  "compatibility_flags": ["nodejs_compat"],
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
   "upload_source_maps": true,
-
   /**
    * Static Assets — served directly from /public
    * https://developers.cloudflare.com/workers/static-assets/binding/
@@ -25,15 +26,6 @@
     "directory": "./public/",
     "binding": "ASSETS"
   },
-
-  /**
-   * Wrangler Rules — import .njk files as raw text strings so Nunjucks
-   * can use renderString() in the Workers runtime (no filesystem loader)
-   */
-  "rules": [
-    { "type": "Text", "globs": ["**/*.njk"], "fallthrough": true }
-  ],
-
   /**
    * D1 Database binding
    * TODO: replace database_id after `wrangler d1 create my-app-db`
@@ -45,7 +37,6 @@
       "database_id": "00000000-0000-0000-0000-000000000000" // TODO: replace with real ID
     }
   ],
-
   /**
    * KV Namespace binding — used for refresh tokens and JWT denylist
    * TODO: replace id after `wrangler kv namespace create SESSIONS`
@@ -56,11 +47,9 @@
       "id": "00000000000000000000000000000000" // TODO: replace with real ID
     }
   ],
-
   "observability": {
     "enabled": true
   },
-
   /**
    * Environment-specific overrides.
    * Secrets (JWT_SECRET, TURNSTILE_SECRET_KEY) are NOT set here — use:

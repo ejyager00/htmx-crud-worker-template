@@ -6,6 +6,8 @@ import { hashPassword, verifyPassword } from "../lib/crypto";
 import { signJwt, verifyJwt } from "../lib/jwt";
 import { verifyTurnstile } from "../lib/turnstile";
 import { render } from "../lib/render";
+import { generateCsrfToken } from "../lib/csrf";
+import { csrfMiddleware } from "../middleware/csrf";
 import type { Env } from "../types";
 
 type AuthContext = Context<{ Bindings: Env }>;
@@ -23,14 +25,34 @@ const cookieOpts = {
   path: "/",
 };
 
+/**
+ * Read the CSRF token from the cookie, or generate a new one and set it.
+ * The cookie is NOT httpOnly so that JS/HTMX can read it for AJAX requests.
+ */
+function ensureCsrfCookie(c: AuthContext): string {
+  let token = getCookie(c, "csrf_token");
+  if (!token) {
+    token = generateCsrfToken();
+    setCookie(c, "csrf_token", token, {
+      sameSite: "Strict",
+      secure: true,
+      path: "/",
+      // NOT httpOnly: JS/HTMX can read this to include it in AJAX requests
+    });
+  }
+  return token;
+}
+
 // ---------------------------------------------------------------------------
 // GET /auth/signup
 // ---------------------------------------------------------------------------
 auth.get("/signup", (c) => {
+  const csrfToken = ensureCsrfCookie(c as AuthContext);
   return c.html(
     render("pages/signup.njk", {
       title: "Sign Up",
       turnstileSiteKey: c.env.TURNSTILE_SITE_KEY,
+      csrfToken,
     })
   );
 });
@@ -40,14 +62,17 @@ auth.get("/signup", (c) => {
 // ---------------------------------------------------------------------------
 auth.post(
   "/signup",
+  csrfMiddleware,
   zValidator("form", SignupSchema, (result, c) => {
     if (!result.success) {
       const ctx = c as AuthContext;
+      const csrfToken = getCookie(ctx, "csrf_token") ?? "";
       return ctx.html(
         render("pages/signup.njk", {
           title: "Sign Up",
           turnstileSiteKey: ctx.env.TURNSTILE_SITE_KEY,
           error: "Invalid input. Please check your details.",
+          csrfToken,
         }),
         400
       );
@@ -55,6 +80,7 @@ auth.post(
   }),
   async (c) => {
     const { username, password, turnstileToken } = c.req.valid("form");
+    const csrfToken = getCookie(c, "csrf_token") ?? "";
 
     // Verify Turnstile
     const turnstileOk = await verifyTurnstile(
@@ -67,6 +93,7 @@ auth.post(
           title: "Sign Up",
           turnstileSiteKey: c.env.TURNSTILE_SITE_KEY,
           error: "Bot check failed. Please try again.",
+          csrfToken,
         }),
         400
       );
@@ -85,6 +112,7 @@ auth.post(
           title: "Sign Up",
           turnstileSiteKey: c.env.TURNSTILE_SITE_KEY,
           error: "Username is already taken.",
+          csrfToken,
         }),
         409
       );
@@ -109,10 +137,12 @@ auth.post(
 // GET /auth/login
 // ---------------------------------------------------------------------------
 auth.get("/login", (c) => {
+  const csrfToken = ensureCsrfCookie(c as AuthContext);
   return c.html(
     render("pages/login.njk", {
       title: "Log In",
       turnstileSiteKey: c.env.TURNSTILE_SITE_KEY,
+      csrfToken,
     })
   );
 });
@@ -122,14 +152,17 @@ auth.get("/login", (c) => {
 // ---------------------------------------------------------------------------
 auth.post(
   "/login",
+  csrfMiddleware,
   zValidator("form", LoginSchema, (result, c) => {
     if (!result.success) {
       const ctx = c as AuthContext;
+      const csrfToken = getCookie(ctx, "csrf_token") ?? "";
       return ctx.html(
         render("pages/login.njk", {
           title: "Log In",
           turnstileSiteKey: ctx.env.TURNSTILE_SITE_KEY,
           error: "Invalid input.",
+          csrfToken,
         }),
         400
       );
@@ -137,6 +170,7 @@ auth.post(
   }),
   async (c) => {
     const { username, password, turnstileToken } = c.req.valid("form");
+    const csrfToken = getCookie(c, "csrf_token") ?? "";
 
     // Verify Turnstile
     const turnstileOk = await verifyTurnstile(
@@ -149,6 +183,7 @@ auth.post(
           title: "Log In",
           turnstileSiteKey: c.env.TURNSTILE_SITE_KEY,
           error: "Bot check failed. Please try again.",
+          csrfToken,
         }),
         400
       );
@@ -167,6 +202,7 @@ auth.post(
           title: "Log In",
           turnstileSiteKey: c.env.TURNSTILE_SITE_KEY,
           error: "Invalid username or password.",
+          csrfToken,
         }),
         401
       );
@@ -180,6 +216,7 @@ auth.post(
           title: "Log In",
           turnstileSiteKey: c.env.TURNSTILE_SITE_KEY,
           error: "Invalid username or password.",
+          csrfToken,
         }),
         401
       );
@@ -193,7 +230,7 @@ auth.post(
 // ---------------------------------------------------------------------------
 // POST /auth/logout
 // ---------------------------------------------------------------------------
-auth.post("/logout", async (c) => {
+auth.post("/logout", csrfMiddleware, async (c) => {
   const accessToken = getCookie(c, "access_token");
   const refreshToken = getCookie(c, "refresh_token");
 
