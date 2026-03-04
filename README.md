@@ -4,7 +4,7 @@
 
 ```bash
 # Initialize a new project using this template
-npm create cloudflare@latest -- --template=ejyager00/htmx-crud-worker-template --agents=false 
+npm create cloudflare@latest -- --template=ejyager00/htmx-crud-worker-template --agents=false
 ```
 
 A production-ready Cloudflare Worker template for building full-stack CRUD applications. Includes authentication, server-side rendering, and a clean architecture you can extend immediately.
@@ -107,7 +107,15 @@ Server-rendered Nunjucks templates with a base layout, nav, header, and footer. 
 npm install
 ```
 
-### 2. Create Cloudflare resources
+### 2. Create Cloudflare resources and configure `wrangler.jsonc`
+
+Run the interactive setup wizard — it provisions D1 databases and KV namespaces via wrangler, then patches `wrangler.jsonc` with the real resource IDs and regenerates TypeScript types automatically:
+
+```bash
+npm run setup
+```
+
+**Manual alternative:** If you prefer to provision resources yourself:
 
 ```bash
 # Create the D1 database
@@ -117,25 +125,13 @@ npx wrangler d1 create my-app-db
 npx wrangler kv namespace create SESSIONS
 ```
 
-### 3. Configure `wrangler.jsonc`
-
-Fill in the IDs returned by the commands above. There are three environments to update: the top-level (used as a fallback), `env.dev`, and `env.production`.
-
-```jsonc
-// Top-level (fallback)
-"d1_databases": [{ "binding": "DB", "database_id": "<YOUR_DB_ID>" }],
-"kv_namespaces": [{ "binding": "SESSIONS", "id": "<YOUR_KV_ID>" }],
-
-// env.dev and env.production — each can have separate DB/KV resources
-```
-
-After updating, regenerate types:
+Then fill in the returned IDs in `wrangler.jsonc` (three places: top-level, `env.dev`, `env.production`) and regenerate types:
 
 ```bash
 npm run types
 ```
 
-### 4. Configure local secrets
+### 3. Configure local secrets
 
 ```bash
 cp .dev.vars.example .dev.vars
@@ -168,6 +164,7 @@ Visit `http://localhost:8787`. You'll be redirected to `/auth/login`.
 
 | Script | Command |
 |---|---|
+| `npm run setup` | Interactive wizard: provision D1/KV via wrangler, patch `wrangler.jsonc`, regenerate types |
 | `npm run dev` | Precompile templates, then start local dev server |
 | `npm run deploy` | Precompile templates, then deploy to Cloudflare |
 | `npm run build` | Precompile Nunjucks templates to JS (run after editing `.njk` files) |

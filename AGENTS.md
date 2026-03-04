@@ -16,6 +16,7 @@ For all limits and quotas, retrieve from the product's `/platform/limits/` page.
 | `npx wrangler dev` | Local development |
 | `npx wrangler deploy` | Deploy to Cloudflare |
 | `npx wrangler types` | Generate TypeScript types |
+| `npm run setup` | One-time interactive wizard: provisions D1 databases and KV namespaces via wrangler CLI, then patches `wrangler.jsonc` with real resource IDs and regenerates types |
 
 Run `wrangler types` after changing bindings in wrangler.jsonc.
 
