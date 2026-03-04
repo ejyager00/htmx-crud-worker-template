@@ -15,7 +15,7 @@ index.get("/health", (c) => c.json({ ok: true }));
 /** Protected home page */
 index.get("/", authMiddleware, (c) => {
   const csrfToken = ensureCsrfCookie(c);
-  return c.html(render("pages/index.njk", { title: "Home", csrfToken }));
+  return c.html(render("pages/index.njk", { title: "Home", csrfToken, user: c.get("user") }));
 });
 
 export default index;

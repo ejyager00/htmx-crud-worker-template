@@ -110,7 +110,7 @@ auth.post(
       .bind(id, username, passwordHash, Math.floor(Date.now() / 1000))
       .run();
 
-    await issueTokens(c, id);
+    await issueTokens(c, id, username);
     return c.redirect("/", 302);
   }
 );
@@ -204,7 +204,7 @@ auth.post(
       );
     }
 
-    await issueTokens(c, user.id);
+    await issueTokens(c, user.id, username);
     return c.redirect("/", 302);
   }
 );
@@ -270,9 +270,9 @@ auth.post("/refresh", async (c) => {
 // Helpers
 // ---------------------------------------------------------------------------
 
-async function issueTokens(c: AuthContext, userId: string): Promise<void> {
+async function issueTokens(c: AuthContext, userId: string, username: string): Promise<void> {
   const [accessToken, refreshToken] = await Promise.all([
-    signJwt({ sub: userId }, c.env.JWT_SECRET, ACCESS_TOKEN_TTL),
+    signJwt({ sub: userId, username }, c.env.JWT_SECRET, ACCESS_TOKEN_TTL),
     generateRefreshToken(),
   ]);
 

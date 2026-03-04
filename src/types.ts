@@ -1,3 +1,8 @@
+export interface User {
+  id: string;
+  username: string;
+}
+
 export interface Env {
   DB: D1Database;
   SESSIONS: KVNamespace;

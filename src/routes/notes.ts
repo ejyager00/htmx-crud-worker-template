@@ -6,9 +6,9 @@ import { authMiddleware } from "../middleware/auth";
 import { csrfMiddleware } from "../middleware/csrf";
 import { ensureCsrfCookie } from "../lib/csrf";
 import { render } from "../lib/render";
-import type { Env } from "../types";
+import type { Env, User } from "../types";
 
-type NotesContext = Context<{ Bindings: Env; Variables: { userId: string } }>;
+type NotesContext = Context<{ Bindings: Env; Variables: { userId: string; user: User } }>;
 
 interface Note {
   id: string;
@@ -21,7 +21,7 @@ interface Note {
 
 const notes = new Hono<{
   Bindings: Env;
-  Variables: { userId: string };
+  Variables: { userId: string; user: User };
 }>();
 
 // All notes routes require authentication
@@ -44,6 +44,7 @@ notes.get("/", async (c) => {
       title: "My Notes",
       notes: rows.results,
       csrfToken,
+      user: c.get("user"),
     })
   );
 });
@@ -58,6 +59,7 @@ notes.get("/new", (c) => {
       title: "New Note",
       action: "/notes",
       csrfToken,
+      user: c.get("user"),
     })
   );
 });
@@ -117,6 +119,7 @@ notes.get("/:id", async (c) => {
       title: note.title,
       note,
       csrfToken,
+      user: c.get("user"),
     })
   );
 });
@@ -141,6 +144,7 @@ notes.get("/:id/edit", async (c) => {
       action: `/notes/${note.id}`,
       note,
       csrfToken,
+      user: c.get("user"),
     })
   );
 });
