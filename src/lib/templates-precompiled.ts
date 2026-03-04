@@ -124,6 +124,53 @@ root: root
 };
 
   })(),
+  "pages/index.njk": (function() {
+function root(env, context, frame, runtime, cb) {
+var lineno = 0;
+var colno = 0;
+var output = "";
+try {
+var parentTemplate = null;
+env.getTemplate("base.njk", true, "pages/index.njk", false, function(t_3,t_2) {
+if(t_3) { cb(t_3); return; }
+parentTemplate = t_2
+for(var t_1 in parentTemplate.blocks) {
+context.addBlock(t_1, parentTemplate.blocks[t_1]);
+}
+output += "\n\n";
+(parentTemplate ? function(e, c, f, r, cb) { cb(""); } : context.getBlock("content"))(env, context, frame, runtime, function(t_5,t_4) {
+if(t_5) { cb(t_5); return; }
+output += t_4;
+output += "\n";
+if(parentTemplate) {
+parentTemplate.rootRenderFunc(env, context, frame, runtime, cb);
+} else {
+cb(null, output);
+}
+})});
+} catch (e) {
+  cb(runtime.handleError(e, lineno, colno));
+}
+}
+function b_content(env, context, frame, runtime, cb) {
+var lineno = 2;
+var colno = 3;
+var output = "";
+try {
+var frame = frame.push(true);
+output += "\n<div class=\"max-w-2xl mx-auto\">\n  <h2 class=\"text-xl font-semibold mb-4\">Welcome!</h2>\n  <p class=\"text-gray-600 text-sm\">\n    Get started by <a href=\"/notes\" class=\"text-indigo-600 hover:underline\">viewing your notes</a>.\n  </p>\n</div>\n";
+cb(null, output);
+;
+} catch (e) {
+  cb(runtime.handleError(e, lineno, colno));
+}
+}
+return {
+b_content: b_content,
+root: root
+};
+
+  })(),
   "pages/login.njk": (function() {
 function root(env, context, frame, runtime, cb) {
 var lineno = 0;
