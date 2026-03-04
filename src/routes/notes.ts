@@ -1,10 +1,10 @@
 import { Hono, type Context } from "hono";
 import { zValidator } from "@hono/zod-validator";
-import { getCookie, setCookie } from "hono/cookie";
+import { getCookie } from "hono/cookie";
 import { NoteSchema } from "../schemas/notes";
 import { authMiddleware } from "../middleware/auth";
 import { csrfMiddleware } from "../middleware/csrf";
-import { generateCsrfToken } from "../lib/csrf";
+import { ensureCsrfCookie } from "../lib/csrf";
 import { render } from "../lib/render";
 import type { Env } from "../types";
 
@@ -26,21 +26,6 @@ const notes = new Hono<{
 
 // All notes routes require authentication
 notes.use("*", authMiddleware);
-
-/** Read the CSRF token from the request cookie, or generate one and set it. */
-function ensureCsrfCookie(c: NotesContext): string {
-  const existing = getCookie(c, "csrf_token");
-  if (existing) return existing;
-
-  const token = generateCsrfToken();
-  setCookie(c, "csrf_token", token, {
-    sameSite: "Strict",
-    secure: true,
-    path: "/",
-    // NOT httpOnly: readable by JS/HTMX for AJAX requests
-  });
-  return token;
-}
 
 // ---------------------------------------------------------------------------
 // GET /notes — list user's notes

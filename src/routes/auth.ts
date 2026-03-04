@@ -6,7 +6,7 @@ import { hashPassword, verifyPassword } from "../lib/crypto";
 import { signJwt, verifyJwt } from "../lib/jwt";
 import { verifyTurnstile } from "../lib/turnstile";
 import { render } from "../lib/render";
-import { generateCsrfToken } from "../lib/csrf";
+import { ensureCsrfCookie } from "../lib/csrf";
 import { csrfMiddleware } from "../middleware/csrf";
 import type { Env } from "../types";
 
@@ -24,24 +24,6 @@ const cookieOpts = {
   sameSite: "Lax" as const,
   path: "/",
 };
-
-/**
- * Read the CSRF token from the cookie, or generate a new one and set it.
- * The cookie is NOT httpOnly so that JS/HTMX can read it for AJAX requests.
- */
-function ensureCsrfCookie(c: AuthContext): string {
-  let token = getCookie(c, "csrf_token");
-  if (!token) {
-    token = generateCsrfToken();
-    setCookie(c, "csrf_token", token, {
-      sameSite: "Strict",
-      secure: true,
-      path: "/",
-      // NOT httpOnly: JS/HTMX can read this to include it in AJAX requests
-    });
-  }
-  return token;
-}
 
 // ---------------------------------------------------------------------------
 // GET /auth/signup

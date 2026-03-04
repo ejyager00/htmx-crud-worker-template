@@ -568,7 +568,9 @@ output += "<nav class=\"bg-white border-b border-gray-200\">\n  <div class=\"max
 if(runtime.contextOrFrameLookup(context, frame, "user")) {
 output += "\n        <span class=\"text-gray-600\">";
 output += runtime.suppressValue(runtime.memberLookup((runtime.contextOrFrameLookup(context, frame, "user")),"username"), env.opts.autoescape);
-output += "</span>\n        <form method=\"POST\" action=\"/auth/logout\" class=\"inline\">\n          <button type=\"submit\" class=\"text-red-600 hover:underline\">Log out</button>\n        </form>\n      ";
+output += "</span>\n        <form method=\"POST\" action=\"/auth/logout\" class=\"inline\">\n          <input type=\"hidden\" name=\"_csrf\" value=\"";
+output += runtime.suppressValue(runtime.contextOrFrameLookup(context, frame, "csrfToken"), env.opts.autoescape);
+output += "\">\n          <button type=\"submit\" class=\"text-red-600 hover:underline\">Log out</button>\n        </form>\n      ";
 ;
 }
 else {
